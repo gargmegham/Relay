@@ -1415,15 +1415,15 @@ def main():
         handle_message
     ))
 
-    # Add auto-nudge job (runs every 6 hours)
+    # TEMPORARY: Add auto-nudge job (runs every 2 minutes for testing, normally 6 hours)
     job_queue = application.job_queue
     if job_queue is not None:
         job_queue.run_repeating(
             auto_nudge_job,
-            interval=timedelta(hours=6),
+            interval=timedelta(minutes=2),  # TEMPORARY: 2 minutes (normally hours=6)
             first=timedelta(seconds=10)  # First run after 10 seconds
         )
-        logger.info("Auto-nudge job scheduled")
+        logger.info("Auto-nudge job scheduled (TESTING: every 2 minutes)")
 
         # Add daily digest job (runs at 7am ET / 12:00 UTC)
         # Note: This runs at 12:00 UTC which is 7am EST (UTC-5)
