@@ -1,5 +1,7 @@
 import os
 import logging
+import signal
+import sys
 from datetime import datetime, timedelta, timezone, time
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -1382,6 +1384,15 @@ def main():
     # Create application
     application = Application.builder().token(BOT_TOKEN).build()
 
+    # Setup graceful shutdown handlers
+    def signal_handler(sig, frame):
+        """Handle shutdown signals gracefully."""
+        logger.info(f"Received signal {sig}, shutting down gracefully...")
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     # Add command handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("admin", admin_command))
@@ -1428,7 +1439,10 @@ def main():
 
     # Start the bot
     logger.info("Starting bot...")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    application.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=True  # Clear stale connections and prevent conflicts
+    )
 
 
 if __name__ == '__main__':
