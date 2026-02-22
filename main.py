@@ -1235,25 +1235,25 @@ async def auto_nudge_job(context: ContextTypes.DEFAULT_TYPE):
 
     for task in open_tasks:
         created_date = datetime.fromisoformat(task['created_at'])
-        days_old = (datetime.now() - created_date).days
+        minutes_old = (datetime.now() - created_date).total_seconds() / 60
 
-        # Check if task is 3+ days old
-        if days_old < 3:
+        # TEMPORARY: Check if task is 2+ minutes old (normally 3+ days)
+        if minutes_old < 2:
             continue
 
         # Check if we've already sent a nudge recently
         if task['last_nudged_at']:
             last_nudge = datetime.fromisoformat(task['last_nudged_at'])
-            days_since_nudge = (datetime.now() - last_nudge).days
+            minutes_since_nudge = (datetime.now() - last_nudge).total_seconds() / 60
 
-            # Only nudge if it's been 3+ days since last nudge
-            if days_since_nudge < 3:
+            # TEMPORARY: Only nudge if it's been 2+ minutes since last nudge (normally 3+ days)
+            if minutes_since_nudge < 2:
                 continue
 
         # Send auto-nudge
         nudge_message = (
             f"Hey {task['assigned_to']}, {task['created_by']} is waiting on: "
-            f"\"{escape_html(task['description'])}\" (asked {days_old} day(s) ago). "
+            f"\"{escape_html(task['description'])}\" (asked {int(minutes_old)} minute(s) ago). "
             f"Quick update?"
         )
 
