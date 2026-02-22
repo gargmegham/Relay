@@ -1235,25 +1235,25 @@ async def auto_nudge_job(context: ContextTypes.DEFAULT_TYPE):
 
     for task in open_tasks:
         created_date = datetime.fromisoformat(task['created_at'])
-        minutes_old = (datetime.now() - created_date).total_seconds() / 60
+        days_old = (datetime.now() - created_date).days
 
-        # TEMPORARY: Check if task is 2+ minutes old (normally 3+ days)
-        if minutes_old < 2:
+        # Check if task is 3+ days old
+        if days_old < 3:
             continue
 
         # Check if we've already sent a nudge recently
         if task['last_nudged_at']:
             last_nudge = datetime.fromisoformat(task['last_nudged_at'])
-            minutes_since_nudge = (datetime.now() - last_nudge).total_seconds() / 60
+            days_since_nudge = (datetime.now() - last_nudge).days
 
-            # TEMPORARY: Only nudge if it's been 2+ minutes since last nudge (normally 3+ days)
-            if minutes_since_nudge < 2:
+            # Only nudge if it's been 3+ days since last nudge
+            if days_since_nudge < 3:
                 continue
 
         # Send auto-nudge
         nudge_message = (
             f"Hey {task['assigned_to']}, {task['created_by']} is waiting on: "
-            f"\"{escape_html(task['description'])}\" (asked {int(minutes_old)} minute(s) ago). "
+            f"\"{escape_html(task['description'])}\" (asked {days_old} day(s) ago). "
             f"Quick update?"
         )
 
@@ -1415,15 +1415,15 @@ def main():
         handle_message
     ))
 
-    # TEMPORARY: Add auto-nudge job (runs every 2 minutes for testing, normally 6 hours)
+    # Add auto-nudge job (runs every 6 hours)
     job_queue = application.job_queue
     if job_queue is not None:
         job_queue.run_repeating(
             auto_nudge_job,
-            interval=timedelta(minutes=2),  # TEMPORARY: 2 minutes (normally hours=6)
+            interval=timedelta(hours=6),
             first=timedelta(seconds=10)  # First run after 10 seconds
         )
-        logger.info("Auto-nudge job scheduled (TESTING: every 2 minutes)")
+        logger.info("Auto-nudge job scheduled")
 
         # Add daily digest job (runs at 7am ET / 12:00 UTC)
         # Note: This runs at 12:00 UTC which is 7am EST (UTC-5)
