@@ -1,6 +1,6 @@
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone, time
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -1278,6 +1278,97 @@ async def auto_nudge_job(context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"Error sending auto-nudge for task #{task['task_id']}: {e}")
 
 
+async def send_daily_digest_job(context: ContextTypes.DEFAULT_TYPE):
+    """Send daily digest to all admins at 7am ET."""
+    logger.info("Running daily digest job...")
+
+    # Get all admin user IDs
+    admin_ids = db.get_all_admins()
+
+    if not admin_ids:
+        logger.warning("No admins found to send daily digest")
+        return
+
+    # Get today's summary
+    summary = db.get_todays_tasks()
+
+    # Combine all tasks
+    all_tasks = []
+    for task in summary['created_today']:
+        all_tasks.append(('created', task))
+    for task in summary['completed_today']:
+        all_tasks.append(('completed', task))
+
+    # Tasks that need attention (3+ days old)
+    old_tasks = [
+        t for t in summary['open_tasks']
+        if (datetime.now() - datetime.fromisoformat(t['created_at'])).days >= 3
+    ]
+    for task in old_tasks:
+        all_tasks.append(('old', task))
+
+    # Build the digest message
+    message = f"📅 <b>DAILY DIGEST</b> • {datetime.now().strftime('%Y-%m-%d')}\n"
+    message += f"➕ Created: {len(summary['created_today'])} • ✅ Completed: {len(summary['completed_today'])}\n"
+    message += f"🔵 Total Open: {len(summary['open_tasks'])} • ⚠️ Needs Attention: {len(old_tasks)}\n"
+    message += "━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+    if not all_tasks:
+        message += "✨ No activity today and no tasks needing attention."
+    else:
+        # Show first 5 tasks only in the digest
+        items_per_page = 5
+        page_tasks = all_tasks[:items_per_page]
+
+        for i, (task_type, task) in enumerate(page_tasks, 1):
+            if task_type == 'created':
+                message += f"➕ <b>Created</b> <code>#{task['task_id']}</code>\n"
+                message += f"📝 {escape_html(task['description'])}\n"
+                message += f"👤 Assigned to: @{task['assigned_to']}\n"
+            elif task_type == 'completed':
+                message += f"✅ <b>Completed</b> <code>#{task['task_id']}</code>\n"
+                message += f"📝 {escape_html(task['description'])}\n"
+                message += f"👤 By: @{task['assigned_to']}\n"
+            else:  # old
+                days_ago = (datetime.now() - datetime.fromisoformat(task['created_at'])).days
+
+                # Priority indicator
+                if days_ago >= 7:
+                    priority_icon = "🔴"
+                else:
+                    priority_icon = "🟡"
+
+                message += f"{priority_icon} <b>Needs Attention</b> <code>#{task['task_id']}</code>\n"
+                message += f"📝 {escape_html(task['description'])}\n"
+                message += f"👤 Assigned to: @{task['assigned_to']}\n"
+                message += f"📅 Age: {days_ago} day{'s' if days_ago != 1 else ''}\n"
+
+            if i < len(page_tasks):
+                message += "\n"
+
+        if len(all_tasks) > items_per_page:
+            message += f"\n... and {len(all_tasks) - items_per_page} more task(s)\n"
+
+    message += "\n━━━━━━━━━━━━━━━━━━━━━\n"
+    message += "Use /today for full details with pagination."
+
+    # Send to all admins
+    success_count = 0
+    for admin_id in admin_ids:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=message,
+                parse_mode='HTML'
+            )
+            success_count += 1
+            logger.info(f"Daily digest sent to admin {admin_id}")
+        except Exception as e:
+            logger.error(f"Error sending daily digest to admin {admin_id}: {e}")
+
+    logger.info(f"Daily digest job completed. Sent to {success_count}/{len(admin_ids)} admins")
+
+
 def main():
     """Start the bot."""
     if not BOT_TOKEN:
@@ -1322,8 +1413,18 @@ def main():
             first=timedelta(seconds=10)  # First run after 10 seconds
         )
         logger.info("Auto-nudge job scheduled")
+
+        # Add daily digest job (runs at 7am ET / 12:00 UTC)
+        # Note: This runs at 12:00 UTC which is 7am EST (UTC-5)
+        # During daylight saving time (EDT), this will be 8am ET (UTC-4)
+        job_queue.run_daily(
+            send_daily_digest_job,
+            time=time(hour=12, minute=0, second=0, tzinfo=timezone.utc),
+            days=(0, 1, 2, 3, 4, 5, 6)  # Every day
+        )
+        logger.info("Daily digest job scheduled for 7am ET (12:00 UTC)")
     else:
-        logger.warning("Job queue not available - auto-nudge disabled")
+        logger.warning("Job queue not available - auto-nudge and daily digest disabled")
 
     # Start the bot
     logger.info("Starting bot...")
