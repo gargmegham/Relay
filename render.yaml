@@ -1,24 +1,4 @@
 services:
-  # PostgreSQL Database
-  - type: pserv
-    name: telebot-db
-    env: docker
-    plan: free
-    region: oregon
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    envVars:
-      - key: POSTGRES_USER
-        value: taskbot
-      - key: POSTGRES_PASSWORD
-        generateValue: true
-      - key: POSTGRES_DB
-        value: taskbot
-    disk:
-      name: postgres-data
-      mountPath: /var/lib/postgresql/data
-      sizeGB: 1
-
   # Telegram Bot Application
   - type: web
     name: telebot
@@ -27,7 +7,6 @@ services:
     region: oregon
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    healthCheckPath: /
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
@@ -37,11 +16,8 @@ services:
         fromDatabase:
           name: telebot-db
           property: connectionString
-    autoDeploy: true
 
 databases:
   - name: telebot-db
     databaseName: taskbot
-    user: taskbot
     plan: free
-    region: oregon
