@@ -362,6 +362,24 @@ class Database:
             cursor.close()
             self.put_connection(conn)
 
+    def get_all_admins(self) -> List[int]:
+        """Get all admin user IDs for daily digest delivery."""
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT user_id
+                FROM users
+                WHERE is_admin = 1
+                ORDER BY user_id ASC
+            ''')
+
+            admin_ids = [row[0] for row in cursor.fetchall()]
+            return admin_ids
+        finally:
+            cursor.close()
+            self.put_connection(conn)
+
     def get_todays_tasks(self) -> Dict[str, List[Dict]]:
         """Get a summary of today's tasks for the daily digest."""
         conn = self.get_connection()
