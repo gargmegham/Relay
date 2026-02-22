@@ -1,6 +1,6 @@
 services:
   # Telegram Bot Application
-  - type: web
+  - type: worker
     name: telebot
     env: docker
     plan: free
