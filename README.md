@@ -27,6 +27,8 @@ A feature-rich Telegram bot for managing tasks and assignments within teams. Ass
 
 ### 📊 Analytics & Reporting
 - **Daily Digest**: Summary of created, completed, and aging tasks (`/today`)
+  - **Automated Delivery**: All admins receive the digest automatically at 7am ET every day
+  - **Manual Access**: Admins can also view the digest anytime using `/today` command
 - **Priority Indicators**: Visual color-coding based on task age
   - 🟢 Recent (<3 days)
   - 🟡 Warning (3-6 days)
@@ -212,6 +214,12 @@ Telebot/
 - **Frequency**: Every 6 hours
 - **Cooldown**: Won't re-nudge if nudged within last 3 days
 
+### Daily Digest Settings
+- **Schedule**: Every day at 7am ET (12:00 UTC)
+- **Recipients**: All users with admin privileges
+- **Content**: Tasks created today, completed today, and tasks needing attention (3+ days old)
+- **Note**: During daylight saving time (EDT), the digest is sent at 8am ET due to UTC offset
+
 ### Pagination
 - **Items per page**: 5
 - **Commands with pagination**: `/list`, `/history`, `/waiting`, `/today`
@@ -244,6 +252,12 @@ Telebot/
 - Job queue requires `python-telegram-bot` installed
 - Check logs for job scheduler status
 - Verify job queue is initialized (look for "Auto-nudge job scheduled" log)
+
+### Daily digest not being sent
+- Check logs for "Daily digest job scheduled for 7am ET" message
+- Ensure there are admin users in the database (use `/admin` command)
+- Verify the bot is running continuously at the scheduled time
+- Check logs for "Running daily digest job..." and delivery status messages
 
 ### Pagination buttons not working
 - Ensure CallbackQueryHandler is registered
