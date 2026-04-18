@@ -1,295 +1,144 @@
-# 📋 Telegram Task Management Bot
+# MintTelegramBot
 
-A feature-rich Telegram bot for managing tasks and assignments within teams. Assign tasks, track progress, send reminders, and get daily digests - all through Telegram!
+A Telegram bot for managing tasks and assignments within small teams. Admins assign tasks, track progress, send reminders, and receive automated daily digests — all through Telegram.
 
-## ✨ Features
+## Features
 
-### 👥 User Management
-- **User Registration**: Users register via `/start` command
-- **Admin System**: Password-protected admin access via `/admin` command
-- **Role-Based Permissions**: Separate commands for admins and regular users
-- **User Directory**: Admins can view all registered users with `/users` command
+- **Task lifecycle**: Create, assign, complete, and view task history
+- **Nudges**: Manual reminders with selectable tone (friendly/urgent/neutral), plus automatic reminders for tasks older than 3 days
+- **Daily digest**: Automated summary sent to all admins at 7am ET; also available on demand via `/today`
+- **Role-based access**: Password-protected admin promotion; regular users can only see and complete their own tasks
+- **Pagination**: Long lists are browsable in pages of 5
+- **Priority indicators**: Tasks are color-coded by age (green <3 days, yellow 3–6 days, red 7+ days)
+- **Reply tracking**: Users can reply to nudge messages; replies are forwarded to the admin who sent the nudge
 
-### 📝 Task Management
-- **Create Tasks**: Admins can assign tasks to team members (`/ask`)
-  - Interactive mode with user selection keyboard
-  - Self-assignment prevention
-- **View Tasks**: Users see their open tasks with pagination (`/list`)
-- **Complete Tasks**: Mark tasks as done (`/done`)
-- **Task History**: Admins can view complete task history per user (`/history`)
-- **All Open Tasks**: Admins see all pending tasks across the team (`/waiting`)
+## Requirements
 
-### 🔔 Reminders & Nudges
-- **Manual Nudges**: Admins can send reminders with different tones (`/nudge`)
-  - Friendly, Urgent, or Neutral tones
-- **Auto-Nudges**: Automatic reminders for tasks older than 3 days (runs every 6 hours)
-- **Reply Tracking**: Users can reply directly to nudges, forwarded to the admin
-
-### 📊 Analytics & Reporting
-- **Daily Digest**: Summary of created, completed, and aging tasks (`/today`)
-  - **Automated Delivery**: All admins receive the digest automatically at 7am ET every day
-  - **Manual Access**: Admins can also view the digest anytime using `/today` command
-- **Priority Indicators**: Visual color-coding based on task age
-  - 🟢 Recent (<3 days)
-  - 🟡 Warning (3-6 days)
-  - 🔴 Urgent (≥7 days)
-
-### 🎨 User Interface
-- **Pagination**: Browse long lists with Previous/Next buttons (5 items per page)
-- **Rich Formatting**: Markdown formatting with icons and visual separators
-- **Reply Threading**: All bot responses reply to user commands for better context
-
-## 🚀 Quick Start
-
-### Prerequisites
 - Python 3.9+
-- PostgreSQL database
-- Telegram Bot Token (from [@BotFather](https://t.me/botfather))
+- PostgreSQL
+- Telegram bot token from [@BotFather](https://t.me/botfather)
 
-### Environment Variables
+## Environment Variables
 
-Create a `.env` file in the project root:
+| Variable | Description |
+|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | Bot token from BotFather |
+| `ADMIN_PASSWORD` | Password used to gain admin access via `/admin` |
+| `DATABASE_URL` | PostgreSQL connection string: `postgresql://user:pass@host:5432/dbname` |
 
-```env
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-ADMIN_PASSWORD=your_admin_password_here
-DATABASE_URL=postgresql://user:password@localhost:5432/taskbot
+Copy `.env.example` to `.env` and fill in the values.
+
+## Setup
+
+### Local
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env
+# edit .env
+python main.py
 ```
 
-### Installation
+### Docker Compose
 
-#### Option 1: Local Development
+```bash
+export TELEGRAM_BOT_TOKEN=your_token
+export ADMIN_PASSWORD=your_password
+docker-compose up -d
+docker-compose logs -f bot
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd Telebot
-   ```
+The compose file starts both the bot and a PostgreSQL instance.
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Render (Blueprint)
 
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your values
-   ```
+1. Push code to GitHub
+2. In the Render dashboard: New → Blueprint → connect your repo
+3. Render detects `render.yaml` and creates a worker service + PostgreSQL
+4. Set `TELEGRAM_BOT_TOKEN` and `ADMIN_PASSWORD` in the Render dashboard; `DATABASE_URL` is auto-wired from the managed database
 
-4. **Run the bot**
-   ```bash
-   python main.py
-   ```
+The bot runs as a background worker (not a web service), so free-tier sleep behavior does not apply.
 
-#### Option 2: Docker Compose
+## Commands
 
-1. **Set environment variables**
-   ```bash
-   export TELEGRAM_BOT_TOKEN=your_token
-   export ADMIN_PASSWORD=your_password
-   ```
+### All Users
 
-2. **Start services**
-   ```bash
-   docker-compose up -d
-   ```
+| Command | Description |
+|---------|-------------|
+| `/start` | Register your account |
+| `/list` | View your open tasks |
+| `/done <task_id>` | Mark a task as completed |
+| `/help` | Show command reference |
+| `/admin <password>` | Gain admin privileges |
 
-3. **View logs**
-   ```bash
-   docker-compose logs -f bot
-   ```
+### Admin Only
 
-#### Option 3: Render Deployment
+| Command | Description |
+|---------|-------------|
+| `/ask [username] [task]` | Assign a task; omitting arguments launches interactive mode |
+| `/nudge <username> <task_id> [tone]` | Send a reminder (tone: `friendly` \| `urgent` \| `neutral`, default: `friendly`) |
+| `/history <username>` | View all tasks (open and completed) for a user |
+| `/waiting` | View all open tasks across the team |
+| `/today` | View the daily digest on demand |
+| `/users` | List all registered users |
 
-**Method 1: Using render.yaml (Recommended)**
+## Background Jobs
 
-1. **Push your code to GitHub**
-   ```bash
-   git add .
-   git commit -m "Add Render configuration"
-   git push origin main
-   ```
+| Job | Schedule | Behavior |
+|-----|----------|----------|
+| Auto-nudge | Every 6 hours | Sends a friendly nudge for tasks >3 days old that haven't been nudged in the last 3 days |
+| Daily digest | Daily at 12:00 UTC (7am ET) | Sends digest to all admins: tasks created today, completed today, and tasks needing attention |
 
-2. **Deploy on Render**
-   - Go to [Render Dashboard](https://dashboard.render.com/)
-   - Click "New" → "Blueprint"
-   - Connect your GitHub repository
-   - Render will automatically detect `render.yaml` and create services
+Both jobs run inside the bot process using `python-telegram-bot`'s built-in job queue. The bot must be running continuously for these to fire.
 
-3. **Set environment variables** in Render dashboard:
-   - `TELEGRAM_BOT_TOKEN` - Your bot token from BotFather
-   - `ADMIN_PASSWORD` - Your admin password
-   - `DATABASE_URL` will be auto-configured from the PostgreSQL service
+## Database Schema
 
-**Method 2: Manual Setup**
-
-1. **Create PostgreSQL Database**
-   - Go to Render Dashboard
-   - Click "New" → "PostgreSQL"
-   - Choose free tier and create database
-   - Copy the "Internal Database URL"
-
-2. **Deploy the Bot**
-   - Click "New" → "Web Service"
-   - Connect your GitHub repository
-   - Set build command: (leave empty, uses Dockerfile)
-   - Add environment variables:
-     - `TELEGRAM_BOT_TOKEN`
-     - `ADMIN_PASSWORD`
-     - `DATABASE_URL` (paste the internal database URL)
-   - Click "Create Web Service"
-
-3. **Note**: Render free tier services may sleep after inactivity. For 24/7 operation, consider upgrading to a paid plan.
-
-## 📖 Command Reference
-
-### User Commands
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `/start` | Register as a task assignee | `/start` |
-| `/list` | View your open tasks | `/list` |
-| `/done <task_id>` | Mark a task as completed | `/done 5` |
-| `/help` | Show available commands | `/help` |
-| `/admin <password>` | Gain admin privileges | `/admin secretpass` |
-
-### Admin Commands
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `/ask <username> <task>` | Assign a task to a user | `/ask john Please review the report` |
-| `/nudge <username> <task_id> [tone]` | Send a reminder (default: friendly) | `/nudge john 5` or `/nudge john 5 urgent` |
-| `/history <username>` | View user's task history | `/history john` |
-| `/waiting` | View all open tasks | `/waiting` |
-| `/today` | Get daily digest | `/today` |
-| `/users` | List all users | `/users` |
-
-### Nudge Tones
-
-- **friendly** (default): Casual, gentle reminder
-- **urgent**: Strong, immediate action required
-- **neutral**: Professional, standard reminder
-
-## 🗄️ Database Schema
-
-### Users Table
 ```sql
-user_id BIGINT PRIMARY KEY
-username TEXT
-is_admin INTEGER DEFAULT 0
+-- users
+user_id       BIGINT PRIMARY KEY
+username      TEXT
+is_admin      INTEGER DEFAULT 0   -- 0 = user, 1 = admin
+
+-- tasks
+task_id              SERIAL PRIMARY KEY
+description          TEXT NOT NULL
+assigned_to          TEXT NOT NULL
+assigned_to_user_id  BIGINT NOT NULL
+status               TEXT DEFAULT 'open'   -- 'open' | 'completed'
+created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+completed_date       TIMESTAMP
+created_by           TEXT NOT NULL
+created_by_user_id   BIGINT NOT NULL
+last_nudged_at       TIMESTAMP
 ```
 
-### Tasks Table
-```sql
-task_id SERIAL PRIMARY KEY
-description TEXT NOT NULL
-assigned_to TEXT NOT NULL
-assigned_to_user_id BIGINT NOT NULL
-status TEXT DEFAULT 'open'
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-completed_date TIMESTAMP
-created_by TEXT NOT NULL
-created_by_user_id BIGINT NOT NULL
-last_nudged_at TIMESTAMP
-```
+The database layer (`database.py`) uses a connection pool (1–10 connections).
 
-## 🏗️ Architecture
+## Project Structure
 
 ```
-Telebot/
-├── main.py              # Bot application & command handlers
-├── database.py          # Database operations & queries
+MintTelegramBot/
+├── main.py              # Command handlers, callback handlers, job scheduling
+├── database.py          # Database connection pool and query functions
 ├── requirements.txt     # Python dependencies
-├── Dockerfile           # Docker container definition
-├── docker-compose.yml   # Multi-container setup
-├── render.yaml          # Render deployment config
-└── .env                 # Environment variables (not in git)
+├── Dockerfile           # Python 3.11-slim container
+├── docker-compose.yml   # Bot + PostgreSQL services
+├── render.yaml          # Render deployment configuration
+└── .env.example         # Environment variable template
 ```
 
-## 🔧 Configuration
+## Troubleshooting
 
-### Auto-Nudge Settings
-- **Trigger**: Tasks older than 3 days
-- **Frequency**: Every 6 hours
-- **Cooldown**: Won't re-nudge if nudged within last 3 days
+**Bot not responding** — verify `TELEGRAM_BOT_TOKEN` is set and the bot process is running. Check logs with `docker-compose logs -f bot`.
 
-### Daily Digest Settings
-- **Schedule**: Every day at 7am ET (12:00 UTC)
-- **Recipients**: All users with admin privileges
-- **Content**: Tasks created today, completed today, and tasks needing attention (3+ days old)
-- **Note**: During daylight saving time (EDT), the digest is sent at 8am ET due to UTC offset
+**Database connection errors** — confirm `DATABASE_URL` format and that PostgreSQL is accessible from the bot.
 
-### Pagination
-- **Items per page**: 5
-- **Commands with pagination**: `/list`, `/history`, `/waiting`, `/today`
+**Auto-nudge or digest not firing** — the job queue requires a continuously running process. Look for `"Auto-nudge job scheduled"` and `"Daily digest job scheduled"` in startup logs to confirm jobs were registered.
 
-### Logging
-- **Level**: INFO
-- **Format**: `%(asctime)s - %(name)s - %(levelname)s - %(message)s`
-- **HTTP logs**: Suppressed (httpx set to WARNING)
+**Daily digest time offset** — the digest fires at 12:00 UTC, which is 7am ET (EST) or 8am ET (EDT) during daylight saving time.
 
-## 🛡️ Security
+## Dependencies
 
-- **Admin Authentication**: Password-protected admin access
-- **User Verification**: All admin commands check user permissions
-- **Database Security**: Connection pooling with prepared statements
-- **Input Validation**: Task IDs, usernames validated before processing
-
-## 🐛 Troubleshooting
-
-### Bot not responding
-- Check if bot token is valid
-- Verify environment variables are set
-- Check logs: `docker-compose logs -f bot`
-
-### Database connection failed
-- Ensure PostgreSQL is running
-- Verify DATABASE_URL format
-- Check database credentials
-
-### Auto-nudge not working
-- Job queue requires `python-telegram-bot` installed
-- Check logs for job scheduler status
-- Verify job queue is initialized (look for "Auto-nudge job scheduled" log)
-
-### Daily digest not being sent
-- Check logs for "Daily digest job scheduled for 7am ET" message
-- Ensure there are admin users in the database (use `/admin` command)
-- Verify the bot is running continuously at the scheduled time
-- Check logs for "Running daily digest job..." and delivery status messages
-
-### Pagination buttons not working
-- Ensure CallbackQueryHandler is registered
-- Check for errors in callback handler logs
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📝 License
-
-This project is open source and available under the MIT License.
-
-## 🙏 Acknowledgments
-
-- Built with [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)
-- Database: [PostgreSQL](https://www.postgresql.org/)
-- Icons: Unicode emoji standard
-
-## 📞 Support
-
-For issues, questions, or feature requests:
-- Open an issue on GitHub
-- Check existing documentation
-- Review command reference above
-
----
-
-**Made with ❤️ for better team task management**
+- [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) 20.7 (with job-queue extra)
+- [psycopg2-binary](https://pypi.org/project/psycopg2-binary/) 2.9.9
+- [python-dotenv](https://pypi.org/project/python-dotenv/) 1.0.0
