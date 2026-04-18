@@ -1,4 +1,4 @@
-# MintTelegramBot
+# Relay
 
 A Telegram bot for managing tasks and assignments within small teams. Admins assign tasks, track progress, send reminders, and receive automated daily digests — all through Telegram.
 
@@ -20,11 +20,11 @@ A Telegram bot for managing tasks and assignments within small teams. Admins ass
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `TELEGRAM_BOT_TOKEN` | Bot token from BotFather |
-| `ADMIN_PASSWORD` | Password used to gain admin access via `/admin` |
-| `DATABASE_URL` | PostgreSQL connection string: `postgresql://user:pass@host:5432/dbname` |
+| Variable             | Description                                                             |
+| -------------------- | ----------------------------------------------------------------------- |
+| `TELEGRAM_BOT_TOKEN` | Bot token from BotFather                                                |
+| `ADMIN_PASSWORD`     | Password used to gain admin access via `/admin`                         |
+| `DATABASE_URL`       | PostgreSQL connection string: `postgresql://user:pass@host:5432/dbname` |
 
 Copy `.env.example` to `.env` and fill in the values.
 
@@ -63,30 +63,30 @@ The bot runs as a background worker (not a web service), so free-tier sleep beha
 
 ### All Users
 
-| Command | Description |
-|---------|-------------|
-| `/start` | Register your account |
-| `/list` | View your open tasks |
-| `/done <task_id>` | Mark a task as completed |
-| `/help` | Show command reference |
-| `/admin <password>` | Gain admin privileges |
+| Command             | Description              |
+| ------------------- | ------------------------ |
+| `/start`            | Register your account    |
+| `/list`             | View your open tasks     |
+| `/done <task_id>`   | Mark a task as completed |
+| `/help`             | Show command reference   |
+| `/admin <password>` | Gain admin privileges    |
 
 ### Admin Only
 
-| Command | Description |
-|---------|-------------|
-| `/ask [username] [task]` | Assign a task; omitting arguments launches interactive mode |
+| Command                              | Description                                                                      |
+| ------------------------------------ | -------------------------------------------------------------------------------- |
+| `/ask [username] [task]`             | Assign a task; omitting arguments launches interactive mode                      |
 | `/nudge <username> <task_id> [tone]` | Send a reminder (tone: `friendly` \| `urgent` \| `neutral`, default: `friendly`) |
-| `/history <username>` | View all tasks (open and completed) for a user |
-| `/waiting` | View all open tasks across the team |
-| `/today` | View the daily digest on demand |
-| `/users` | List all registered users |
+| `/history <username>`                | View all tasks (open and completed) for a user                                   |
+| `/waiting`                           | View all open tasks across the team                                              |
+| `/today`                             | View the daily digest on demand                                                  |
+| `/users`                             | List all registered users                                                        |
 
 ## Background Jobs
 
-| Job | Schedule | Behavior |
-|-----|----------|----------|
-| Auto-nudge | Every 6 hours | Sends a friendly nudge for tasks >3 days old that haven't been nudged in the last 3 days |
+| Job          | Schedule                    | Behavior                                                                                      |
+| ------------ | --------------------------- | --------------------------------------------------------------------------------------------- |
+| Auto-nudge   | Every 6 hours               | Sends a friendly nudge for tasks >3 days old that haven't been nudged in the last 3 days      |
 | Daily digest | Daily at 12:00 UTC (7am ET) | Sends digest to all admins: tasks created today, completed today, and tasks needing attention |
 
 Both jobs run inside the bot process using `python-telegram-bot`'s built-in job queue. The bot must be running continuously for these to fire.
